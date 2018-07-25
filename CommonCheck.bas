@@ -15,7 +15,7 @@ Set Ws2 = Sheets(2)
 Dim Ws3 As Worksheet
 Set Ws3 = Sheets(3)
 
-'全表校验时的校验结果输出范围
+'全表校验时的校验结果输出范围12-15行，1-5列
 Dim nRowForOutput, nColForOutput As Integer
 nRowForOutput = 12
 nColForOutput = 1
@@ -27,23 +27,35 @@ nRowStart = 4
 
 '校验指定表时的字段的起始列号，当前列号和总列数，
 Dim nColStart, nColEnd, nCol As Integer
-nColStart = 3
+nColStart = 2
 
 '判断该表是否已经有错误
 Dim bIsError As Boolean
 bIsError = False
 
+'文件路径前缀
+Dim FilePath As String
+
+'工作薄变量
+Dim TargetBook As Workbook
+
 For nRow = nRowStart To nRowEnd
-    nColEnd = Ws2.Range("IV" & nRow).End(xlToLeft).Column
     
-    '找到目标工作簿,在sheet2的第nROW行第2列
-    Dim TargetBook As Workbook
-    Set TargetBook = Workbooks.Open(Ws2.Cells(nRow, 2).Value)
+    '如果是Excel文件，加上路径前缀后打开，否则更改路径路径前缀
+    If Ws2.Cells(nRow, 1).Value Like "*.xlsx" Then
+        Set TargetBook = Workbooks.Open(FilePath & Ws2.Cells(nRow, 1).Value)
+    Else
+        FindFilePath Ws2.Cells(nRow, 1).Value, FilePath
+    End If
      
     '检查空行空列以及数据类型是否符合要求
     FormatCheck TargetBook
     
+    '获得校验文件的总列数
+    nColEnd = Ws2.Range("IV" & nRow).End(xlToLeft).Column
     For nCol = nColStart To nColEnd
+        
+        '获得某个表某字段校验要求
         Dim VecCheckId
         Dim strCheckId As String
         VecCheckId = Split(Ws2.Cells(nRow, nCol), ",")
@@ -64,11 +76,15 @@ For nRow = nRowStart To nRowEnd
             End If
         Next
     Next
-    If nColForOutput = 16 Then
+    If nColForOutput > 15 Then
         MsgBox "输出单元格已满，请先修改校验结果"
         Exit For
     End If
     bIsError = False
+    
+    '保存、关闭工作薄
+    TargetBook.Save
+    TargetBook.Close
 Next
 End Sub
 
@@ -86,9 +102,8 @@ Set Ws2 = Sheets(2)
 Dim Ws3 As Worksheet
 Set Ws3 = Sheets(3)
 
-'打开21行1-5列的工作簿
+'Sheet2的行号和列号，用于获得所校验表的校验要求，同时nCol-1也是所校验表该字段的列号
 Dim nRow, nRowStart, nRowEnd, nCol, nColStart, nColEnd As Integer
-nRow = 21
 
 'Sheet2搜索表名从第4行开始
 nRowStart = 4
@@ -96,53 +111,65 @@ nRowStart = 4
 '条件表从sheet2第3类开始获取所查表各字段校验要求
 nColStart = 3
 
-'Sheet2的行号和列号，用于获得所校验表的校验要求，同时nCol1-1也是所校验表该字段的列号
-Dim nRow1, nCol1 As Integer
+'打开第21行1-5列中的工作薄
+Dim nRowInWs1, nColInWs1 As Integer
+nRowInWs1 = 21
 
 '所要校验的表的总数
 nRowEnd = Ws2.[A65535].End(xlUp).Row
 
-'某个表索要的字段总数为nColEnd
+'文件路径前缀
+Dim FilePath As String
 
-For nCol = 1 To 5
-    If Cells(nRow, nCol).Value = "" Then
+'工作薄变量
+Dim TargetBook As Workbook
+
+For nColInWs1 = 1 To 5
+    
+    '如果21行的单元格为空，说明后面没有要校验的数据了，结束校验
+    If Ws1.Cells(nRowInWs1, nColInWs1).Value = "" Then
         Exit For
-    Else
-        For nRow1 = nRowStart To nRowEnd
-            If Ws2.Cells(nRow1, 1).Value = Cells(nRow, nCol).Value Then
-                
-                '找到目标工作簿
-                Dim TargetBook As Workbook
-                Set TargetBook = Workbooks.Open(Ws2.Cells(nRow1, 2).Value)
-                
-                '检查空行空列以及数据类型是否符合要求
-                FormatCheck TargetBook
-                nColEnd = Ws2.Range("IV" & nRow1).End(xlToLeft).Column
-                
-                For nCol1 = nColStart To nColEnd
-                    '获得某个表某字段校验要求
-                    Dim VecCheckId
-                    Dim strCheckId As String
-                    VecCheckId = Split(Ws2.Cells(nRow1, nCol1), ",")
-                    
-                    Dim i As Integer
-                    For i = LBound(VecCheckId) To UBound(VecCheckId)
-                        strCheckId = VecCheckId(i)
-                        If IsCheckPassed(strCheckId, Ws3, TargetBook, nCol1 - 1) = False Then
-                            Ws1.Cells(nRow + 1, nCol).Interior.ColorIndex = 3
-                            Ws1.Cells(nRow + 1, nCol).Value = "又双叒叕错了-_-!"
-                        Else
-                            Ws1.Cells(nRow + 1, nCol).Interior.ColorIndex = 4
-                            Ws1.Cells(nRow + 1, nCol).Value = "恭喜！"
-                        End If
-                    Next
-                Next
-                
-                TargetBook.Save
-                TargetBook.Close
-            End If
-        Next
     End If
+    
+    For nRow = nRowStart To nRowEnd
+            
+        If Ws2.Cells(nRow, 1).Value Like "*_FILE_PATH" Then
+            FindFilePath Ws2.Cells(nRow, 1).Value, FilePath
+        ElseIf Ws2.Cells(nRow, 1).Value = Cells(nRowInWs1, nRowInWs1).Value Then
+                
+            '找到目标工作簿
+            Set TargetBook = Workbooks.Open(FilePath & Ws2.Cells(nRow, 1).Value)
+                
+            '检查空行空列以及数据类型是否符合要求
+            FormatCheck TargetBook
+            
+            '获得校验文件的总列数
+            nColEnd = Ws2.Range("IV" & nRow).End(xlToLeft).Column
+            For nCol = nColStart To nColEnd
+                
+                '获得某个表某字段校验要求
+                Dim VecCheckId
+                Dim strCheckId As String
+                VecCheckId = Split(Ws2.Cells(nRow, nCol), ",")
+                    
+                Dim i As Integer
+                For i = LBound(VecCheckId) To UBound(VecCheckId)
+                    strCheckId = VecCheckId(i)
+                    If IsCheckPassed(strCheckId, Ws3, TargetBook, nCol - 1) = False Then
+                        Ws1.Cells(nRowInWs1 + 1, nColInWs1).Interior.ColorIndex = 3
+                        Ws1.Cells(nRowInWs1 + 1, nColInWs1).Value = "又双叒叕错了-_-!"
+                    Else
+                        Ws1.Cells(nRowInWs1 + 1, nColInWs1).Interior.ColorIndex = 4
+                        Ws1.Cells(nRowInWs1 + 1, nColInWs1).Value = "恭喜！"
+                    End If
+                Next
+            Next
+            
+            '保存、关闭工作薄
+            TargetBook.Save
+            TargetBook.Close
+        End If
+    Next
 Next
 
 End Sub
@@ -177,27 +204,32 @@ End Sub
 Sub OpenWB1()
 
 '打开21行1列中的Excel工作簿
-Dim nRow, nCol As Integer
-nRow = 21
-nCol = 1
+Dim nRowInWs1, nColInWs1 As Integer
+nRowInWs1 = 21
+nColInWs1 = 1
 
 '设置Sheet2变量
-Dim Ws As Worksheet
-Set Ws = Sheets(2)
+Dim Ws2 As Worksheet
+Set Ws2 = Sheets(2)
 
-Dim nRowEnd, nRow1 As Integer
-nRowEnd = Ws.[A65535].End(xlUp).Row
+Dim nRowEnd, nRow As Integer
+nRowEnd = Ws2.[A65535].End(xlUp).Row
 
-If Cells(nRow, nCol).Value = "" Then
+'文件路径前缀
+Dim FilePath As String
+
+'工作薄变量
+Dim TargetBook As Workbook
+
+If Cells(nRowInWs1, nRowInWs1).Value = "" Then
     MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
-    Dim strWb As String
-    strWb = Cells(nRow, nCol).Value
-    
-    For nRow1 = 3 To nRowEnd
-        If Ws.Cells(nRow1, 1) = strWb Then
-            Dim TargetBook As Workbook
-            Set TargetBook = Workbooks.Open(Ws.Cells(nRow1, 2).Value)
+    For nRow = 4 To nRowEnd
+        If Ws2.Cells(nRow, 1).Value Like "*_FILE_PATH" Then
+            FilePath = Ws2.Cells(nRow, 1).Value
+        ElseIf Ws2.Cells(nRow, 1).Value = Cells(nRowInWs1, nRowInWs1).Value Then
+            '找到目标工作簿
+            Set TargetBook = Workbooks.Open(FilePath & Ws2.Cells(nRow, 1).Value)
         End If
     Next
 End If
@@ -207,27 +239,32 @@ End Sub
 Sub OpenWB2()
 
 '打开21行2列中的Excel工作簿
-Dim nRow, nCol As Integer
-nRow = 21
-nCol = 2
+Dim nRowInWs1, nColInWs1 As Integer
+nRowInWs1 = 21
+nColInWs1 = 2
 
 '设置Sheet2变量
-Dim Ws As Worksheet
-Set Ws = Sheets(2)
+Dim Ws2 As Worksheet
+Set Ws2 = Sheets(2)
 
-Dim nRowEnd, nRow1 As Integer
-nRowEnd = Ws.[A65535].End(xlUp).Row
+Dim nRowEnd, nRow As Integer
+nRowEnd = Ws2.[A65535].End(xlUp).Row
 
-If Cells(nRow, nCol).Value = "" Then
-    MsgBox "表2内没有配置表名称", vbOKOnly, "你很皮啊"
+'文件路径前缀
+Dim FilePath As String
+
+'工作薄变量
+Dim TargetBook As Workbook
+
+If Cells(nRowInWs1, nRowInWs1).Value = "" Then
+    MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
-    Dim strWb As String
-    strWb = Cells(nRow, nCol).Value
-    
-     For nRow1 = 3 To nRowEnd
-        If Ws.Cells(nRow1, 1) = strWb Then
-            Dim TargetBook As Workbook
-            Set TargetBook = Workbooks.Open(Ws.Cells(nRow1, 2).Value)
+    For nRow = 4 To nRowEnd
+        If Ws2.Cells(nRow, 1).Value Like "*_FILE_PATH" Then
+            FilePath = Ws2.Cells(nRow, 1).Value
+        ElseIf Ws2.Cells(nRow, 1).Value = Cells(nRowInWs1, nRowInWs1).Value Then
+            '找到目标工作簿
+            Set TargetBook = Workbooks.Open(FilePath & Ws2.Cells(nRow, 1).Value)
         End If
     Next
 End If
@@ -237,27 +274,32 @@ End Sub
 Sub OpenWB3()
 
 '打开21行3列中的Excel工作簿
-Dim nRow, nCol As Integer
-nRow = 21
-nCol = 3
+Dim nRowInWs1, nColInWs1 As Integer
+nRowInWs1 = 21
+nColInWs1 = 3
 
 '设置Sheet2变量
-Dim Ws As Worksheet
-Set Ws = Sheets(2)
+Dim Ws2 As Worksheet
+Set Ws2 = Sheets(2)
 
-Dim nRowEnd, nRow1 As Integer
-nRowEnd = Ws.[A65535].End(xlUp).Row
+Dim nRowEnd, nRow As Integer
+nRowEnd = Ws2.[A65535].End(xlUp).Row
 
-If Cells(nRow, nCol).Value = "" Then
-    MsgBox "表3内没有配置表名称", vbOKOnly, "你很皮啊"
+'文件路径前缀
+Dim FilePath As String
+
+'工作薄变量
+Dim TargetBook As Workbook
+
+If Cells(nRowInWs1, nRowInWs1).Value = "" Then
+    MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
-    Dim strWb As String
-    strWb = Cells(nRow, nCol).Value
-    
-     For nRow1 = 3 To nRowEnd
-        If Ws.Cells(nRow1, 1) = strWb Then
-            Dim TargetBook As Workbook
-            Set TargetBook = Workbooks.Open(Ws.Cells(nRow1, 2).Value)
+    For nRow = 4 To nRowEnd
+        If Ws2.Cells(nRow, 1).Value Like "*_FILE_PATH" Then
+            FilePath = Ws2.Cells(nRow, 1).Value
+        ElseIf Ws2.Cells(nRow, 1).Value = Cells(nRowInWs1, nRowInWs1).Value Then
+            '找到目标工作簿
+            Set TargetBook = Workbooks.Open(FilePath & Ws2.Cells(nRow, 1).Value)
         End If
     Next
 End If
@@ -267,27 +309,32 @@ End Sub
 Sub OpenWB4()
 
 '打开21行4列中的Excel工作簿
-Dim nRow, nCol As Integer
-nRow = 21
-nCol = 4
+Dim nRowInWs1, nColInWs1 As Integer
+nRowInWs1 = 21
+nColInWs1 = 4
 
 '设置Sheet2变量
-Dim Ws As Worksheet
-Set Ws = Sheets(2)
+Dim Ws2 As Worksheet
+Set Ws2 = Sheets(2)
 
-Dim nRowEnd, nRow1 As Integer
-nRowEnd = Ws.[A65535].End(xlUp).Row
+Dim nRowEnd, nRow As Integer
+nRowEnd = Ws2.[A65535].End(xlUp).Row
 
-If Cells(nRow, nCol).Value = "" Then
-    MsgBox "表4内没有配置表名称", vbOKOnly, "你很皮啊"
+'文件路径前缀
+Dim FilePath As String
+
+'工作薄变量
+Dim TargetBook As Workbook
+
+If Cells(nRowInWs1, nRowInWs1).Value = "" Then
+    MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
-    Dim strWb As String
-    strWb = Cells(nRow, nCol).Value
-    
-     For nRow1 = 3 To nRowEnd
-        If Ws.Cells(nRow1, 1) = strWb Then
-            Dim TargetBook As Workbook
-            Set TargetBook = Workbooks.Open(Ws.Cells(nRow1, 2).Value)
+    For nRow = 4 To nRowEnd
+        If Ws2.Cells(nRow, 1).Value Like "*_FILE_PATH" Then
+            FilePath = Ws2.Cells(nRow, 1).Value
+        ElseIf Ws2.Cells(nRow, 1).Value = Cells(nRowInWs1, nRowInWs1).Value Then
+            '找到目标工作簿
+            Set TargetBook = Workbooks.Open(FilePath & Ws2.Cells(nRow, 1).Value)
         End If
     Next
 End If
@@ -297,27 +344,32 @@ End Sub
 Sub OpenWB5()
 
 '打开21行5列中的Excel工作簿
-Dim nRow, nCol As Integer
-nRow = 21
-nCol = 5
+Dim nRowInWs1, nColInWs1 As Integer
+nRowInWs1 = 21
+nColInWs1 = 5
 
 '设置Sheet2变量
-Dim Ws As Worksheet
-Set Ws = Sheets(2)
+Dim Ws2 As Worksheet
+Set Ws2 = Sheets(2)
 
-Dim nRowEnd, nRow1 As Integer
-nRowEnd = Ws.[A65535].End(xlUp).Row
+Dim nRowEnd, nRow As Integer
+nRowEnd = Ws2.[A65535].End(xlUp).Row
 
-If Cells(nRow, nCol).Value = "" Then
-    MsgBox "表5内没有配置表名称", vbOKOnly, "你很皮啊"
+'文件路径前缀
+Dim FilePath As String
+
+'工作薄变量
+Dim TargetBook As Workbook
+
+If Cells(nRowInWs1, nRowInWs1).Value = "" Then
+    MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
-    Dim strWb As String
-    strWb = Cells(nRow, nCol).Value
-    
-     For nRow1 = 3 To nRowEnd
-        If Ws.Cells(nRow1, 1) = strWb Then
-            Dim TargetBook As Workbook
-            Set TargetBook = Workbooks.Open(Ws.Cells(nRow1, 2).Value)
+    For nRow = 4 To nRowEnd
+        If Ws2.Cells(nRow, 1).Value Like "*_FILE_PATH" Then
+            FilePath = Ws2.Cells(nRow, 1).Value
+        ElseIf Ws2.Cells(nRow, 1).Value = Cells(nRowInWs1, nRowInWs1).Value Then
+            '找到目标工作簿
+            Set TargetBook = Workbooks.Open(FilePath & Ws2.Cells(nRow, 1).Value)
         End If
     Next
 End If
@@ -331,9 +383,7 @@ Dim Ws1, Ws4 As Worksheet
 Set Ws1 = Sheets(1)
 Set Ws4 = Sheets(4)
 
-
 Dim nRowStart, nRowEnd, nRow, nCol, nColStart, nColEnd, nRowForOutput, nColForOutput As Integer
-
 
 '含有资源的策划包路径始于第3行，止于第nRowEnd行
 nRowStart = 3
@@ -367,7 +417,7 @@ For nRow = nRowStart To nRowEnd
                 
                 '如果路径字段不为空，说明此行数据为资源，需要查找该路径下文件是否存在
                 If TargetBook.Sheets(1).Cells(nRowInRes, nCol).Value <> "" Then
-                    DirName = Dir("E:\Game301\Game301_Client_NewDesign\Src\Game301\Assets\Resources\" & TargetBook.Sheets(1).Cells(nRowInRes, nCol).Value & ".*")
+                    DirName = Dir(RESOURCE_FILE_PATH & TargetBook.Sheets(1).Cells(nRowInRes, nCol).Value & ".*")
                     
                     If DirName = "" Then
                         TargetBook.Sheets(1).Cells(nRowInRes, 1).Interior.ColorIndex = 3
@@ -416,5 +466,5 @@ For nRow = nRowStart To nRowEnd
         Ws.Cells(nRow, nCol).Value = ""
     Next
 Next
- 
+    
 End Sub
