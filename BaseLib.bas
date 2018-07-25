@@ -7,6 +7,8 @@ Dim nRow, nRowStart, nRowEnd As Integer
 nRowStart = 3
 nRowEnd = CheckSheet.[A65535].End(xlUp).Row
 
+IsCheckPassed = True
+
 If CheckId <> "" Then
     For nRow = nRowStart To nRowEnd
         If CheckSheet.Cells(nRow, 1).Value = CheckId Then

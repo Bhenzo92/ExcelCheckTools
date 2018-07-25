@@ -135,8 +135,8 @@ For nColInWs1 = 1 To 5
             
         If Ws2.Cells(nRow, 1).Value Like "*_FILE_PATH" Then
             FindFilePath Ws2.Cells(nRow, 1).Value, FilePath
-        ElseIf Ws2.Cells(nRow, 1).Value = Cells(nRowInWs1, nRowInWs1).Value Then
-                
+        ElseIf Ws2.Cells(nRow, 1).Value = Ws1.Cells(nRowInWs1, nColInWs1).Value Then
+              
             '找到目标工作簿
             Set TargetBook = Workbooks.Open(FilePath & Ws2.Cells(nRow, 1).Value)
                 
@@ -221,7 +221,7 @@ Dim FilePath As String
 '工作薄变量
 Dim TargetBook As Workbook
 
-If Cells(nRowInWs1, nRowInWs1).Value = "" Then
+If Cells(nRowInWs1, nColInWs1).Value = "" Then
     MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
     For nRow = 4 To nRowEnd
@@ -256,7 +256,7 @@ Dim FilePath As String
 '工作薄变量
 Dim TargetBook As Workbook
 
-If Cells(nRowInWs1, nRowInWs1).Value = "" Then
+If Cells(nRowInWs1, nColInWs1).Value = "" Then
     MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
     For nRow = 4 To nRowEnd
@@ -291,7 +291,7 @@ Dim FilePath As String
 '工作薄变量
 Dim TargetBook As Workbook
 
-If Cells(nRowInWs1, nRowInWs1).Value = "" Then
+If Cells(nRowInWs1, nColInWs1).Value = "" Then
     MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
     For nRow = 4 To nRowEnd
@@ -326,7 +326,7 @@ Dim FilePath As String
 '工作薄变量
 Dim TargetBook As Workbook
 
-If Cells(nRowInWs1, nRowInWs1).Value = "" Then
+If Cells(nRowInWs1, nColInWs1).Value = "" Then
     MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
     For nRow = 4 To nRowEnd
@@ -361,7 +361,7 @@ Dim FilePath As String
 '工作薄变量
 Dim TargetBook As Workbook
 
-If Cells(nRowInWs1, nRowInWs1).Value = "" Then
+If Cells(nRowInWs1, nColInWs1).Value = "" Then
     MsgBox "表1内没有配置表名称", vbOKOnly, "你很皮啊"
 Else
     For nRow = 4 To nRowEnd
